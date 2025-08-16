@@ -1,0 +1,65 @@
+<form method="POST">
+    <label>User ID:</label>
+    <input type="text" name="user_id" required><br>
+
+    <label>Department:</label>
+    <select name="designation" required>
+        <option value="QC">QC</option>
+        <option value="QA">QA</option>
+        <option value="Production">Production</option>
+        <option value="Warehouse">Warehouse</option>
+    </select><br>
+
+    <label>Position:</label>
+    <select name="position" required>
+        <!-- QC Positions -->
+        <option value="Officer">Officer</option>
+        <option value="Junior Officer">Junior Officer</option>
+        <option value="Sr. Officer">Sr. Officer</option>
+        <option value="Executive">Executive</option>
+        <option value="Sr. Executive">Sr. Executive</option>
+        <option value="Assistant Manager">Assistant Manager</option>
+        <option value="HOD">HOD</option>
+    </select><br>
+
+    <label>Password:</label>
+    <input type="password" name="password" required><br>
+
+    <label>Role:</label>
+    <select name="role" required>
+        <option value="admin">Admin</option>
+        <option value="staff">Staff</option>
+    </select><br>
+
+    <button type="submit">Add User</button>
+</form>
+@app.route("/add_user", methods=["GET", "POST"])
+def add_user():
+    if session.get("role") != "admin":
+        return redirect("/")
+
+    if request.method == "POST":
+        user_id = request.form["user_id"]
+        designation = request.form["designation"]   # Department
+        position = request.form["position"]         # Position
+        password = request.form["password"]
+        role = request.form["role"]
+
+        existing_user = User.query.filter_by(user_id=user_id).first()
+        if existing_user:
+            flash("User ID already exists.")
+            return redirect("/add_user")
+
+        new_user = User(
+            user_id=user_id,
+            designation=designation,
+            position=position,
+            password_hash=generate_password_hash(password),
+            role=role
+        )
+        db.session.add(new_user)
+        db.session.commit()
+        flash("✅ New user added.")
+        return redirect("/view_users")
+    
+    return render_template("add_user.html")

@@ -13,3 +13,20 @@
     <a href="/logout">Logout</a>
 </body>
 </html>
+
+<canvas id="qcChart"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const ctx = document.getElementById('qcChart').getContext('2d');
+const qcChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: ['Batch 1', 'Batch 2'],
+        datasets: [{
+            label: 'QC Pass Count',
+            data: [12, 19],
+        }]
+    }
+});
+</script>
+

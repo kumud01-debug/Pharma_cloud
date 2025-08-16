@@ -1,16 +1,73 @@
 <!DOCTYPE html>
-<html>
-<head><title>Login</title></head>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PharmaCloud Login</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #f4f6f8;
+    }
+    .login-container {
+      max-width: 400px;
+      margin: 60px auto;
+      padding: 20px;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .logo {
+      display: block;
+      margin: 0 auto 20px;
+      max-width: 150px;
+    }
+    .hint {
+      font-size: 0.875rem;
+      color: #6c757d;
+    }
+    .error {
+      color: red;
+      font-size: 0.9rem;
+      text-align: center;
+    }
+  </style>
+</head>
 <body>
-    <h2>Pharma Cloud Login</h2>
-    <form method="POST">
-        <input name="user_id" placeholder="User ID" required><br>
-        <input name="designation" placeholder="Designation" required><br>
-        <input type="password" name="password" placeholder="Password" required><br>
-        <button type="submit">Login</button>
-    </form>
+  <div class="login-container">
+    <!-- Logo -->
+    <img src="{{ url_for('static', filename='logo.png') }}" alt="PharmaCloud Logo" class="logo">
+
+    <h3 class="text-center mb-4">Login</h3>
+
     {% if error %}
-    <p style="color:red">{{ error }}</p>
+      <div class="error">{{ error }}</div>
     {% endif %}
+
+    <form method="POST">
+      <div class="mb-3">
+        <label for="user_id" class="form-label">User ID</label>
+        <input type="text" class="form-control" id="user_id" name="user_id" required>
+        <div class="hint">e.g., admin01, emp123</div>
+      </div>
+      <div class="mb-3">
+        <label for="designation" class="form-label">Designation</label>
+        <select class="form-select" id="designation" name="designation" required>
+          <option selected disabled>Select</option>
+          <option>Admin</option>
+          <option>Warehouse</option>
+          <option>Quality Control</option>
+          <option>Production</option>
+          <option>Quality Assurance</option>
+        </select>
+        <div class="hint">Select your working department</div>
+      </div>
+      <div class="mb-3">
+        <label for="password" class="form-label">Password</label>
+        <input type="password" class="form-control" id="password" name="password" required>
+        <div class="hint">Enter your password</div>
+      </div>
+      <button type="submit" class="btn btn-primary w-100">Login</button>
+    </form>
+  </div>
 </body>
 </html>

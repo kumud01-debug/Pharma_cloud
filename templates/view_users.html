@@ -1,0 +1,14 @@
+<h3>All Users</h3>
+<table border="1">
+  <tr><th>ID</th><th>User ID</th><th>Designation</th><th>Role</th><th>Action</th></tr>
+  {% for user in users %}
+    <tr>
+      <td>{{ user.id }}</td>
+      <td>{{ user.user_id }}</td>
+      <td>{{ user.designation }}</td>
+      <td>{{ user.role }}</td>
+      <td><a href="/delete_user/{{ user.id }}">🗑 Delete</a></td>
+    </tr>
+  {% endfor %}
+</table>
+<a href="/admin_panel">⬅ Back</a>
