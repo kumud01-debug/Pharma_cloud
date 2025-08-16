@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Add QC Sample</title>
+</head>
+<body>
+    <h1>Add Sample</h1>
+    <form method="POST">
+        <label>Sample Name:</label>
+        <input type="text" name="sample_name" required><br><br>
+
+        <label>Result:</label>
+        <select name="result">
+            <option value="Pass">Pass</option>
+            <option value="Fail">Fail</option>
+        </select><br><br>
+
+        <button type="submit">Save</button>
+    </form>
+    <a href="{{ url_for('qc_dashboard') }}">⬅ Back to Dashboard</a>
+</body>
+</html>

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Warehouse Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <h2>🏭 Warehouse Dashboard</h2>
+  <p>Welcome, {{ session['user_id'] }} ({{ session['position'] }})</p>
+
+  <div class="actions">
+    <h3>📦 Warehouse Functions</h3>
+    <ul>
+      <li><a href="#">Add Raw Material</a></li>
+      <li><a href="#">View Material Stock</a></li>
+      <li><a href="#">Issue to Production</a></li>
+      <li><a href="#">Receive from Vendor</a></li>
+    </ul>
+  </div>
+
+  <a href="{{ url_for('logout') }}">⬅ Logout</a>
+</body>
+</html>

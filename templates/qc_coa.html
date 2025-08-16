@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>COA - {{ s.ar_no }}</title></head>
+<body>
+  <h2>Certificate of Analysis</h2>
+  <p><b>AR No:</b> {{ s.ar_no }}</p>
+  <p><b>Material:</b> {{ m.material_code }} - {{ m.material_name }}</p>
+  <p><b>Lot:</b> {{ m.lot_no }} | <b>Vendor:</b> {{ m.vendor }}</p>
+  <p><b>Sampled on:</b> {{ s.sample_date.strftime('%Y-%m-%d %H:%M') }}</p>
+
+  <h3>Results</h3>
+  <table border="1" cellpadding="6">
+    <tr><th>Parameter</th><th>Specification</th><th>Result</th><th>Verdict</th></tr>
+    {% for r in results %}
+      <tr>
+        <td>{{ r.parameter }}</td>
+        <td>
+          {% for sp in specs if sp.parameter == r.parameter %}
+            {% if sp.textual_limit %} {{ sp.textual_limit }}
+            {% else %}
+              {{ sp.lower_limit if sp.lower_limit is not none else "" }} – {{ sp.upper_limit if sp.upper_limit is not none else "" }} {{ sp.unit or "" }}
+            {% endif %}
+          {% endfor %}
+        </td>
+        <td>
+          {% if r.result_text %} {{ r.result_text }}
+          {% else %} {{ r.result_value }} {{ r.unit or "" }}
+          {% endif %}
+        </td>
+        <td><b>{{ r.verdict }}</b></td>
+      </tr>
+    {% endfor %}
+  </table>
+
+  <h3>Overall Verdict: {{ coa.overall_verdict }}</h3>
+  <p>Generated at: {{ coa.generated_at.strftime('%Y-%m-%d %H:%M') }}</p>
+</body>
+</html>

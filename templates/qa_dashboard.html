@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>QA Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <h2>✅ Quality Assurance Dashboard</h2>
+  <p>Welcome, {{ session['user_id'] }} ({{ session['position'] }})</p>
+
+  <div class="actions">
+    <h3>🧪 QA Functions</h3>
+    <ul>
+      <li><a href="#">Approve Batches</a></li>
+      <li><a href="#">View Audit Trail</a></li>
+      <li><a href="#">Check QC Reports</a></li>
+      <li><a href="#">Release/Reject Material</a></li>
+    </ul>
+  </div>
+
+  <a href="{{ url_for('logout') }}">⬅ Logout</a>
+</body>
+</html>

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>QC Dashboard</title>
+  <link href="{{ url_for('static', filename='logo.png') }}" rel="icon">
+</head>
+<body>
+  <h2>🔬 QC Dashboard</h2>
+  <p>Welcome, {{ session.get('user_id') }} ({{ session.get('designation') }})</p>
+
+  <p><a href="{{ url_for('qc_new_material') }}">➕ Add Material (demo)</a></p>
+
+  <table border="1" cellpadding="6">
+    <tr>
+      <th>Code</th><th>Name</th><th>Lot</th><th>Vendor</th><th>Qty</th><th>Unit</th><th>Received</th><th>Status</th><th>Action</th>
+    </tr>
+    {% for m in materials %}
+      <tr>
+        <td>{{ m.material_code }}</td>
+        <td>{{ m.material_name }}</td>
+        <td>{{ m.lot_no }}</td>
+        <td>{{ m.vendor }}</td>
+        <td>{{ m.received_qty }}</td>
+        <td>{{ m.unit }}</td>
+        <td>{{ m.received_date.strftime('%Y-%m-%d') if m.received_date else '' }}</td>
+        <td>{{ m.status }}</td>
+        <td><a href="{{ url_for('qc_material_detail', material_id=m.id) }}">Open</a></td>
+      </tr>
+    {% endfor %}
+  </table>
+
+  <p><a href="{{ url_for('logout') }}">Logout</a></p>
+</body>
+</html>

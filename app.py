@@ -2,26 +2,19 @@ from flask import Flask, render_template, request, redirect, session, url_for, f
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from werkzeug.security import generate_password_hash, check_password_hash
-from models import User  # Import your models here
+from models import User, QCRecord, WarehouseRecord, ProductionRecord, QARecord, RawMaterial, QCSample, Specification, TestResult, COA
 from database import db
-# -------------------
-# App Configuration
-# -------------------
+from datetime import datetime
+
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///pharma_data.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.secret_key = 'your_secret_key_here'
 
-# -------------------
-# Database + Migration Setup
-# -------------------
 db.init_app(app)
 migrate = Migrate(app, db)
 
-# -------------------
-# Routes
-# -------------------
-
+# ------------------- LOGIN -------------------
 @app.route("/", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -49,19 +42,17 @@ def login():
             else:
                 return "No dashboard assigned for your designation."
         else:
-            return "Invalid credentials."
+            flash("❌ Invalid credentials!", "error")
 
     return render_template("login.html")
 
-
+# ------------------- ADMIN -------------------
 @app.route("/admin")
 def admin_panel():
     if "designation" in session and session["designation"] == "Admin":
         users = User.query.all()
         return render_template("admin_panel.html", users=users)
     return redirect(url_for("login"))
-
- 
 
 @app.route("/admin/add_user", methods=["POST"])
 def add_user():
@@ -70,13 +61,13 @@ def add_user():
         designation = request.form.get("designation")
         position = request.form.get("position")
         role = request.form.get("role")
-        password_hash = request.form.get("password")
+        password = request.form.get("password")
 
         if User.query.filter_by(user_id=user_id).first():
             flash("⚠️ User ID already exists!", "error")
             return redirect(url_for("admin_panel"))
 
-        hashed_pw = generate_password_hash(password_hash)
+        hashed_pw = generate_password_hash(password)
         new_user = User(
             user_id=user_id,
             designation=designation,
@@ -90,7 +81,6 @@ def add_user():
 
     return redirect(url_for("admin_panel"))
 
-
 @app.route("/admin/delete_user/<int:user_id>")
 def delete_user(user_id):
     if "designation" in session and session["designation"] == "Admin":
@@ -101,39 +91,256 @@ def delete_user(user_id):
             flash("🗑 User deleted successfully!", "success")
     return redirect(url_for("admin_panel"))
 
+# ------------------- QC -------------------
 
-@app.route("/qc")
+
+# ------------------ Helpers ------------------
+
+def require_qc_or_admin():
+    # simple gate
+    if not session.get("user_id"):
+        return False
+    return session.get("designation") in ("QC", "Admin")
+
+def next_ar_no():
+    # AR-YYYYMMDD-#### per day sequence
+    today = datetime.utcnow().strftime("%Y%m%d")
+    prefix = f"AR-{today}-"
+    latest = QCSample.query.filter(QCSample.ar_no.like(f"{prefix}%")) \
+                           .order_by(QCSample.ar_no.desc()).first()
+    if latest:
+        last_seq = int(latest.ar_no.split("-")[-1])
+        return f"{prefix}{last_seq+1:04d}"
+    return f"{prefix}0001"
+
+# ------------------ QC: Dashboard ------------------
+
+@app.route("/qc_dashboard")
 def qc_dashboard():
-    return "Welcome to QC Dashboard"
+    if not require_qc_or_admin():
+        return redirect(url_for("login"))
+    mats = RawMaterial.query.order_by(RawMaterial.received_date.desc()).all()
+    return render_template("qc_dashboard.html", materials=mats)
+
+# ------------------ QC: Create / Receive Material (for demo) ------------------
+# In real life this comes from Warehouse. Here we give QC a quick way to seed materials.
+
+@app.route("/qc/material/new", methods=["GET", "POST"])
+def qc_new_material():
+    if not require_qc_or_admin():
+        return redirect(url_for("login"))
+    if request.method == "POST":
+        rm = RawMaterial(
+            material_code=request.form["material_code"],
+            material_name=request.form["material_name"],
+            lot_no=request.form["lot_no"],
+            vendor=request.form.get("vendor"),
+            received_qty=float(request.form.get("received_qty", 0) or 0),
+            unit=request.form.get("unit"),
+            status="Pending Sampling"
+        )
+        db.session.add(rm)
+        db.session.commit()
+        flash("✅ Material added.", "success")
+        return redirect(url_for("qc_dashboard"))
+    return render_template("qc_new_material.html")
+
+# ------------------ QC: Material detail ------------------
+
+@app.route("/qc/material/<int:material_id>")
+def qc_material_detail(material_id):
+    if not require_qc_or_admin():
+        return redirect(url_for("login"))
+    m = RawMaterial.query.get_or_404(material_id)
+    sample = m.latest_sample()
+    specs = Specification.query.filter_by(material_id=material_id).all()
+    results = TestResult.query.filter(TestResult.sample_id == (sample.id if sample else None)).all() if sample else []
+    return render_template("qc_material_detail.html", m=m, sample=sample, specs=specs, results=results)
+
+# ------------------ QC: Sampling / AR generation ------------------
+
+@app.route("/qc/material/<int:material_id>/sample", methods=["POST"])
+def qc_take_sample(material_id):
+    if not require_qc_or_admin():
+        return redirect(url_for("login"))
+    m = RawMaterial.query.get_or_404(material_id)
+    ar = next_ar_no()
+    s = QCSample(
+        ar_no=ar,
+        sampler=session.get("user_id"),
+        remarks=request.form.get("remarks"),
+        material=m
+    )
+    m.status = "Sampled"
+    db.session.add(s)
+    db.session.commit()
+    flash(f"✅ Sample taken. AR No: {ar}", "success")
+    return redirect(url_for("qc_material_detail", material_id=material_id))
+
+# ------------------ QC: Specification CRUD (minimal add) ------------------
+
+@app.route("/qc/material/<int:material_id>/spec/add", methods=["POST"])
+def qc_add_spec(material_id):
+    if not require_qc_or_admin():
+        return redirect(url_for("login"))
+    m = RawMaterial.query.get_or_404(material_id)
+
+    lower = request.form.get("lower_limit")
+    upper = request.form.get("upper_limit")
+    spec = Specification(
+        material=m,
+        parameter=request.form["parameter"],
+        method=request.form.get("method"),
+        unit=request.form.get("unit"),
+        lower_limit=float(lower) if lower else None,
+        upper_limit=float(upper) if upper else None,
+        textual_limit=request.form.get("textual_limit")
+    )
+    db.session.add(spec)
+    db.session.commit()
+    flash("✅ Specification added.", "success")
+    return redirect(url_for("qc_material_detail", material_id=material_id))
+
+# ------------------ QC: Enter Test Result ------------------
+
+def _judge_result(parameter, value_num, value_text, unit, specs_for_param):
+    """
+    Compare a result to matching spec rows. If any matching spec exists:
+      - If textual_limit set → compare case-insensitive exact match.
+      - Else use numeric range [lower_limit, upper_limit].
+    Returns "Pass" or "Fail".
+    """
+    for s in specs_for_param:
+        if s.textual_limit:
+            if value_text and value_text.strip().lower() == s.textual_limit.strip().lower():
+                return "Pass"
+            else:
+                return "Fail"
+        else:
+            if value_num is None:
+                return "Fail"
+            lo = s.lower_limit if s.lower_limit is not None else float("-inf")
+            hi = s.upper_limit if s.upper_limit is not None else float("inf")
+            if lo <= value_num <= hi:
+                return "Pass"
+            return "Fail"
+    # no spec → conservative choice is Fail (or mark "NA")
+    return "Fail"
+
+@app.route("/qc/sample/<int:sample_id>/result/add", methods=["POST"])
+def qc_add_result(sample_id):
+    if not require_qc_or_admin():
+        return redirect(url_for("login"))
+    s = QCSample.query.get_or_404(sample_id)
+    m = s.material
+
+    parameter = request.form["parameter"]
+    unit = request.form.get("unit")
+    val_num = request.form.get("result_value")
+    val_text = request.form.get("result_text")
+
+    value_num = float(val_num) if val_num not in (None, "",) else None
+    specs = Specification.query.filter_by(material_id=m.id, parameter=parameter).all()
+
+    verdict = _judge_result(parameter, value_num, val_text, unit, specs)
+
+    tr = TestResult(
+        sample=s,
+        parameter=parameter,
+        result_value=value_num,
+        result_text=val_text,
+        unit=unit,
+        verdict=verdict,
+        tested_by=session.get("user_id")
+    )
+    m.status = "Testing"
+    db.session.add(tr)
+    db.session.commit()
+    flash(f"🧪 Result saved ({parameter}: {verdict}).", "success")
+    return redirect(url_for("qc_material_detail", material_id=m.id))
+
+# ------------------ QC: Generate COA (also sets overall status) ------------------
+
+@app.route("/qc/sample/<int:sample_id>/generate_coa", methods=["POST"])
+def qc_generate_coa(sample_id):
+    if not require_qc_or_admin():
+        return redirect(url_for("login"))
+    s = QCSample.query.get_or_404(sample_id)
+    m = s.material
+    results = TestResult.query.filter_by(sample_id=sample_id).all()
+    if not results:
+        flash("⚠️ No results found to generate COA.", "error")
+        return redirect(url_for("qc_material_detail", material_id=m.id))
+
+    overall = "Pass" if all(r.verdict == "Pass" for r in results) else "Fail"
+
+    if s.coa:
+        s.coa.overall_verdict = overall
+        s.coa.generated_at = datetime.utcnow()
+    else:
+        db.session.add(COA(sample=s, overall_verdict=overall))
+
+    m.status = overall
+    db.session.commit()
+    flash(f"📄 COA generated. Overall: {overall}", "success")
+    return redirect(url_for("qc_view_coa", sample_id=sample_id))
+
+@app.route("/qc/coa/<int:sample_id>")
+def qc_view_coa(sample_id):
+    if not require_qc_or_admin():
+        return redirect(url_for("login"))
+    s = QCSample.query.get_or_404(sample_id)
+    m = s.material
+    specs = Specification.query.filter_by(material_id=m.id).all()
+    results = TestResult.query.filter_by(sample_id=sample_id).all()
+    return render_template("qc_coa.html", m=m, s=s, specs=specs, results=results, coa=s.coa)
 
 
-@app.route("/warehouse")
+# ------------------- Warehouse -------------------
+@app.route("/warehouse", methods=["GET", "POST"])
 def warehouse_dashboard():
-    return "Welcome to Warehouse Dashboard"
+    if request.method == "POST":
+        material_name = request.form["material_name"]
+        quantity = request.form["quantity"]
+        new_record = WarehouseRecord(material_name=material_name, quantity=quantity)
+        db.session.add(new_record)
+        db.session.commit()
+    records = WarehouseRecord.query.all()
+    return render_template("warehouse_dashboard.html", records=records)
 
-
-@app.route("/production")
+# ------------------- Production -------------------
+@app.route("/production", methods=["GET", "POST"])
 def production_dashboard():
-    return "Welcome to Production Dashboard"
+    if request.method == "POST":
+        batch_no = request.form["batch_no"]
+        status = request.form["status"]
+        new_record = ProductionRecord(batch_no=batch_no, status=status)
+        db.session.add(new_record)
+        db.session.commit()
+    records = ProductionRecord.query.all()
+    return render_template("production_dashboard.html", records=records)
 
-
-@app.route("/qa")
+# ------------------- QA -------------------
+@app.route("/qa", methods=["GET", "POST"])
 def qa_dashboard():
-    return "Welcome to QA Dashboard"
+    if request.method == "POST":
+        audit_name = request.form["audit_name"]
+        status = request.form["status"]
+        new_record = QARecord(audit_name=audit_name, status=status)
+        db.session.add(new_record)
+        db.session.commit()
+    records = QARecord.query.all()
+    return render_template("qa_dashboard.html", records=records)
 
-
+# ------------------- LOGOUT -------------------
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for("login"))
 
-
-# -------------------
-# CLI Command to Create Initial Admin
-# -------------------
+# ------------------- CLI COMMAND -------------------
 @app.cli.command("create-admin")
 def create_admin():
-    """Run this command to create an initial admin user."""
     if not User.query.filter_by(user_id="admin01").first():
         hashed_pw = generate_password_hash("admin123")
         admin_user = User(
@@ -141,7 +348,7 @@ def create_admin():
             designation="Admin",
             position="Admin",
             role="admin",
-            password=hashed_pw
+            password_hash=hashed_pw
         )
         db.session.add(admin_user)
         db.session.commit()
@@ -149,7 +356,5 @@ def create_admin():
     else:
         print("⚠️ Admin already exists.")
 
-
 if __name__ == "__main__":
     app.run(debug=True)
-

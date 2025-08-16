@@ -1,0 +1,12 @@
+git init
+git remote add origin https://github.com/your-username/pharma_cloud_backend.git
+git add .
+git commit -m "Initial commit - Pharma Cloud Backend"
+git branch -M main
+git push -u origin main
+
+
+
+git add .
+git commit -m "Updated: <describe your change>"
+git push
