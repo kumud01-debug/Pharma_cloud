@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, session, url_for
+from flask import Flask, render_template, request, redirect, session, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -60,6 +60,46 @@ def admin_panel():
         users = User.query.all()
         return render_template("admin_panel.html", users=users)
     return redirect(url_for("login"))
+
+ 
+
+@app.route("/admin/add_user", methods=["POST"])
+def add_user():
+    if "designation" in session and session["designation"] == "Admin":
+        user_id = request.form.get("user_id")
+        designation = request.form.get("designation")
+        position = request.form.get("position")
+        role = request.form.get("role")
+        password_hash = request.form.get("password")
+
+        if User.query.filter_by(user_id=user_id).first():
+            flash("⚠️ User ID already exists!", "error")
+            return redirect(url_for("admin_panel"))
+
+        hashed_pw = generate_password_hash(password_hash)
+        new_user = User(
+            user_id=user_id,
+            designation=designation,
+            position=position,
+            role=role,
+            password_hash=hashed_pw
+        )
+        db.session.add(new_user)
+        db.session.commit()
+        flash("✅ User added successfully!", "success")
+
+    return redirect(url_for("admin_panel"))
+
+
+@app.route("/admin/delete_user/<int:user_id>")
+def delete_user(user_id):
+    if "designation" in session and session["designation"] == "Admin":
+        user = User.query.get(user_id)
+        if user:
+            db.session.delete(user)
+            db.session.commit()
+            flash("🗑 User deleted successfully!", "success")
+    return redirect(url_for("admin_panel"))
 
 
 @app.route("/qc")

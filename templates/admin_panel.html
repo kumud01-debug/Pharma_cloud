@@ -1,4 +1,44 @@
-<h2>Welcome to Admin Panel</h2>
-<a href="/add_user">➕ Add User</a><br>
-<a href="/view_users">👥 View All Users</a><br>
-<a href="/logout">🔓 Logout</a>
+<h2>Admin Panel - User Management</h2>
+
+<!-- Add User Form -->
+<form method="POST" action="{{ url_for('add_user') }}">
+  <input type="text" name="user_id" placeholder="User ID" required>
+  <select name="designation" required>
+    <option value="QC">QC</option>
+    <option value="Warehouse">Warehouse</option>
+    <option value="Production">Production</option>
+    <option value="QA">QA</option>
+    <option value="Admin">Admin</option>
+  </select>
+  <input type="text" name="position" placeholder="Position" required>
+  <select name="role" required>
+    <option value="staff">Staff</option>
+    <option value="admin">Admin</option>
+  </select>
+  <input type="password" name="password" placeholder="Password" required>
+  <button type="submit">➕ Add User</button>
+</form>
+
+<hr>
+
+<!-- Users Table -->
+<table border="1">
+  <tr>
+    <th>ID</th>
+    <th>User ID</th>
+    <th>Designation</th>
+    <th>Position</th>
+    <th>Role</th>
+    <th>Action</th>
+  </tr>
+  {% for user in users %}
+  <tr>
+    <td>{{ user.id }}</td>
+    <td>{{ user.user_id }}</td>
+    <td>{{ user.designation }}</td>
+    <td>{{ user.position }}</td>
+    <td>{{ user.role }}</td>
+    <td><a href="{{ url_for('delete_user', user_id=user.id) }}">🗑 Delete</a></td>
+  </tr>
+  {% endfor %}
+</table>
