@@ -1,24 +1,122 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Warehouse Dashboard</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <meta charset="UTF-8">
+    <title>Warehouse Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-  <h2>🏭 Warehouse Dashboard</h2>
-  <p>Welcome, {{ session['user_id'] }} ({{ session['position'] }})</p>
+    <h1>🏭 Warehouse Dashboard</h1>
+    <a href="{{ url_for('logout') }}">Logout</a>
 
-  <div class="actions">
-    <h3>📦 Warehouse Functions</h3>
-    <ul>
-      <li><a href="#">Add Raw Material</a></li>
-      <li><a href="#">View Material Stock</a></li>
-      <li><a href="#">Issue to Production</a></li>
-      <li><a href="#">Receive from Vendor</a></li>
-    </ul>
-  </div>
+    <h2>➕ Receive Material</h2>
+    <<form method="POST" action="{{ url_for('add_material') }}">
+  <input type="text" name="material_name" placeholder="Material Name" required>
+  <input type="text" name="material_code" placeholder="Material Code" required>
+  <input type="text" name="supplier_name" placeholder="Supplier Name" required>
+  <input type="number" step="0.01" name="quantity_received" placeholder="Quantity" required>
+  <input type="text" name="unit" placeholder="Unit" required>
+  <button type="submit">Add Material</button>
+</form>
 
-  <a href="{{ url_for('logout') }}">⬅ Logout</a>
+
+<table border="1">
+  <tr>
+    <th>ID</th>
+    <th>Material Name</th>
+    <th>Code</th>
+    <th>Supplier</th>
+    <th>Quantity</th>
+    <th>Unit</th>
+    <th>Status</th>
+    <th>Received Date</th>
+  </tr>
+  {% for material in materials %}
+  <tr>
+    <td>{{ material.id }}</td>
+    <td>{{ material.material_name }}</td>
+    <td>{{ material.material_code }}</td>
+    <td>{{ material.supplier_name }}</td>
+    <td>{{ material.quantity_received }}</td>
+    <td>{{ material.unit }}</td>
+    <td>{{ material.status }}</td>
+    <td>{{ material.received_date }}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+
+    <h2>📋 Current Materials</h2>
+    <table border="1">
+        <tr>
+            <th>ID</th><th>Name</th><th>Code</th><th>Supplier</th><th>Qty</th><th>Unit</th><th>Status</th><th>Date</th>
+        </tr>
+        {% for m in materials %}
+        <tr>
+            <td>{{ m.id }}</td>
+            <td>{{ m.material_name }}</td>
+            <td>{{ m.material_code }}</td>
+            <td>{{ m.supplier_name }}</td>
+            <td>{{ m.quantity_received }}</td>
+            <td>{{ m.unit }}</td>
+            <td>{{ m.status }}</td>
+            <td>{{ m.received_date.strftime('%Y-%m-%d') }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <h2>📦 Issue Material</h2>
+    <form method="POST" action="{{ url_for('issue_material') }}">
+        <select name="material_id" required>
+            {% for m in materials %}
+                <option value="{{ m.id }}">{{ m.material_name }} ({{ m.quantity_received }} {{ m.unit }})</option>
+            {% endfor %}
+        </select>
+        <input type="number" step="0.01" name="issued_quantity" placeholder="Quantity" required>
+        <input type="text" name="issued_to" placeholder="Issued To (Production/QC)" required>
+        <input type="text" name="remarks" placeholder="Remarks">
+        <button type="submit">Issue</button>
+    </form>
+
+    <h2>🚚 Dispatch Finished Goods</h2>
+    <form method="POST" action="{{ url_for('dispatch_goods') }}">
+        <input type="text" name="product_name" placeholder="Product Name" required>
+        <input type="text" name="batch_no" placeholder="Batch No" required>
+        <input type="number" step="0.01" name="quantity_dispatched" placeholder="Quantity" required>
+        <input type="text" name="customer_name" placeholder="Customer Name" required>
+        <input type="text" name="remarks" placeholder="Remarks">
+        <button type="submit">Dispatch</button>
+    </form>
+
+    <h2>📦 Issued Materials</h2>
+    <table border="1">
+        <tr><th>ID</th><th>Material</th><th>Issued Qty</th><th>To</th><th>Date</th><th>Remarks</th></tr>
+        {% for i in issues %}
+        <tr>
+            <td>{{ i.id }}</td>
+            <td>{{ i.material_id }}</td>
+            <td>{{ i.issued_quantity }} {{ i.unit }}</td>
+            <td>{{ i.issued_to }}</td>
+            <td>{{ i.issued_date.strftime('%Y-%m-%d') }}</td>
+            <td>{{ i.remarks }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <h2>🚛 Dispatched Goods</h2>
+    <table border="1">
+        <tr><th>ID</th><th>Product</th><th>Batch</th><th>Qty</th><th>Customer</th><th>Date</th><th>Remarks</th></tr>
+        {% for d in dispatches %}
+        <tr>
+            <td>{{ d.id }}</td>
+            <td>{{ d.product_name }}</td>
+            <td>{{ d.batch_no }}</td>
+            <td>{{ d.quantity_dispatched }} {{ d.unit }}</td>
+            <td>{{ d.customer_name }}</td>
+            <td>{{ d.dispatch_date.strftime('%Y-%m-%d') }}</td>
+            <td>{{ d.remarks }}</td>
+        </tr>
+        {% endfor %}
+    </table>
 </body>
 </html>

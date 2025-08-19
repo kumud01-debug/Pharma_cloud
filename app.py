@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, session, url_for, f
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from werkzeug.security import generate_password_hash, check_password_hash
-from models import User, QCRecord, WarehouseRecord, ProductionRecord, QARecord, RawMaterial, QCSample, Specification, TestResult, COA
+from models import User, QCRecord, WarehouseRecord, ProductionRecord, QARecord, RawMaterial, QCSample, Specification, TestResult, COA, WarehouseMaterial
 from database import db
 from datetime import datetime
 
@@ -307,6 +307,80 @@ def warehouse_dashboard():
         db.session.commit()
     records = WarehouseRecord.query.all()
     return render_template("warehouse_dashboard.html", records=records)
+    
+    
+# -------------------
+# Warehouse Dashboard
+# -------------------
+# Add material (Receiving)
+@app.route("/warehouse/add_material", methods=["POST"])
+@app.route('/warehouse/add', methods=['POST'])
+@app.route('/warehouse/add', methods=['POST'])
+def add_material():
+    material_code = request.form['material_code']
+    existing = WarehouseMaterial.query.filter_by(material_code=material_code).first()
+    if existing:
+        return "⚠️ Material code already exists. Use a different code.", 400
+
+    new_material = WarehouseMaterial(
+        material_name=request.form['material_name'],
+        material_code=material_code,
+        supplier_name=request.form['supplier_name'],
+        quantity_received=float(request.form['quantity_received']),
+        unit=request.form['unit']
+    )
+    db.session.add(new_material)
+    db.session.commit()
+    return redirect('/warehouse')
+
+
+
+# Issue material
+@app.route("/warehouse/issue", methods=["POST"])
+def issue_material():
+    material_id = int(request.form.get("material_id"))
+    issued_quantity = float(request.form.get("issued_quantity"))
+    issued_to = request.form.get("issued_to")
+    remarks = request.form.get("remarks")
+
+    new_issue = WarehouseIssue(
+        material_id=material_id,
+        issued_quantity=issued_quantity,
+        issued_to=issued_to,
+        remarks=remarks
+    )
+    db.session.add(new_issue)
+
+    # Update stock
+    material = WarehouseMaterial.query.get(material_id)
+    material.quantity_received -= issued_quantity
+    db.session.commit()
+
+    flash("📦 Material issued successfully!", "success")
+    return redirect(url_for("warehouse_dashboard"))
+
+# Dispatch finished goods
+@app.route("/warehouse/dispatch", methods=["POST"])
+def dispatch_goods():
+    product_name = request.form.get("product_name")
+    batch_no = request.form.get("batch_no")
+    quantity_dispatched = float(request.form.get("quantity_dispatched"))
+    customer_name = request.form.get("customer_name")
+    remarks = request.form.get("remarks")
+
+    new_dispatch = WarehouseDispatch(
+        product_name=product_name,
+        batch_no=batch_no,
+        quantity_dispatched=quantity_dispatched,
+        customer_name=customer_name,
+        remarks=remarks
+    )
+    db.session.add(new_dispatch)
+    db.session.commit()
+
+    flash("🚚 Goods dispatched successfully!", "success")
+    return redirect(url_for("warehouse_dashboard"))
+
 
 # ------------------- Production -------------------
 @app.route("/production", methods=["GET", "POST"])

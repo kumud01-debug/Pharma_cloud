@@ -117,3 +117,34 @@ class COA(db.Model):
     overall_verdict = db.Column(db.String(10))  # Pass/Fail
     generated_at = db.Column(db.DateTime, default=datetime.utcnow)
     notes = db.Column(db.Text)
+ 
+class WarehouseMaterial(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    material_name = db.Column(db.String(100), nullable=False)
+    material_code = db.Column(db.String(50), nullable=False)   # removed unique=True
+    supplier_name = db.Column(db.String(100), nullable=False)
+    quantity_received = db.Column(db.Float, nullable=False)
+    unit = db.Column(db.String(20), nullable=False)
+    received_date = db.Column(db.DateTime, default=datetime.utcnow)
+    status = db.Column(db.String(20), default='Received')
+
+# Material issued to production
+class WarehouseIssue(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    material_id = db.Column(db.Integer, db.ForeignKey("warehouse_material.id"), nullable=False)
+    issued_quantity = db.Column(db.Float, nullable=False)
+    unit = db.Column(db.String(50), default="kg")
+    issued_to = db.Column(db.String(200), nullable=False)  # Production / QA / QC
+    issued_date = db.Column(db.DateTime, default=datetime.utcnow)
+    remarks = db.Column(db.String(300))
+
+# Finished goods dispatch
+class WarehouseDispatch(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    product_name = db.Column(db.String(200), nullable=False)
+    batch_no = db.Column(db.String(100), nullable=False)
+    quantity_dispatched = db.Column(db.Float, nullable=False)
+    unit = db.Column(db.String(50), default="boxes")
+    customer_name = db.Column(db.String(200), nullable=False)
+    dispatch_date = db.Column(db.DateTime, default=datetime.utcnow)
+    remarks = db.Column(db.String(300))
