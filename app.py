@@ -211,7 +211,7 @@ def _judge_result(parameter, value_num, value_text, unit, specs_for_param):
     Returns "Pass" or "Fail".
     """
     for s in specs_for_param:
-        if s.textual_limit:
+        if s.textual_limit != "" and value_text != "":
             if value_text and value_text.strip().lower() == s.textual_limit.strip().lower():
                 return "Pass"
             else:
