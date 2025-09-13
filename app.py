@@ -5,6 +5,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from models import User, QCRecord, WarehouseRecord, ProductionRecord, QARecord, RawMaterial, QCSample, Specification, TestResult, COA, WarehouseMaterial
 from database import db
 from datetime import datetime
+from utils.random_data_generator import generate_bulk_raw_materials
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///pharma_data.db'
@@ -295,6 +296,23 @@ def qc_view_coa(sample_id):
     results = TestResult.query.filter_by(sample_id=sample_id).all()
     return render_template("qc_coa.html", m=m, s=s, specs=specs, results=results, coa=s.coa)
 
+@app.route("/qc/generate-random", methods=["POST"])
+def qc_generate_random():
+    n = int(request.form.get("count", 10))  # default 10
+    message = generate_bulk_raw_materials(n)
+    flash(message, "success")
+    return redirect("/qc_dashboard")  # go back to QC dashboard
+    
+@app.route("/qc/clear-all", methods=["POST"])
+def qc_clear_all():
+    try:
+        db.session.query(RawMaterial).delete()
+        db.session.commit()
+        flash("✅ All Raw Material data cleared!", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"❌ Error: {str(e)}", "danger")
+    return redirect("/qc_dashboard")
 
 # ------------------- Warehouse -------------------
 @app.route("/warehouse", methods=["GET", "POST"])

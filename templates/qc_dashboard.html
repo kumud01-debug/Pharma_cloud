@@ -11,6 +11,21 @@
 
   <p><a href="{{ url_for('qc_new_material') }}">➕ Add Material (demo)</a></p>
 
+  <form action="{{ url_for('qc_generate_random') }}" method="post" style="display:inline;">
+    <input type="number" name="count" value="10" min="1" max="500" class="form-control" style="width:80px; display:inline;">
+    <button type="submit" class="btn btn-warning">
+        Generate Random Data
+    </button>
+  </form>
+  
+  <!-- Delete All Random Data -->
+  <form action="{{ url_for('qc_clear_all') }}" method="post" style="display:inline; margin-left:10px;">
+    <button type="submit" class="btn btn-danger"
+            onclick="return confirm('⚠️ Are you sure? This will delete ALL QC raw material data!');">
+        Delete All QC Data
+    </button>
+  </form>
+
   <table border="1" cellpadding="6">
     <tr>
       <th>Code</th><th>Name</th><th>Lot</th><th>Vendor</th><th>Qty</th><th>Unit</th><th>Received</th><th>Status</th><th>Action</th>
